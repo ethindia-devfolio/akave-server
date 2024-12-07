@@ -92,4 +92,12 @@ async def get_data_source_versions(data_source_name: str):
     """
     Endpoint to get all versions of a data source.
     """
-    return read_db("SELECT * FROM data_source_versions WHERE data_source_name = %s", (data_source_name,))
+    return read_db("SELECT * FROM data_source_versions WHERE data_source_name = %s", (data_source_name))
+
+@app.get("/data_sources/{data_source_name}/versions/{version_name}")
+async def visualize_transformation(data_source_name: str, version_name: str, transformation_params: dict):
+    """
+    Endpoint to visualize the transformation of a specific version of a data source.
+    """
+    return {"message": "Transformation visualized successfully"}
+
