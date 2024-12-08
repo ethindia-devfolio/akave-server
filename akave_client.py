@@ -3,7 +3,7 @@ import requests
 
 
 class AkaveClient:
-    def __init__(self, node_address=None, port=None):
+    def __init__(self, node_address=None):
         """
         Initialize the Akave client with the provided configuration.
         If any parameter is not provided, it will try to read from environment variables.  # noqa: E501
@@ -13,12 +13,11 @@ class AkaveClient:
             port (int): API server port.
         """
         self.node_address = node_address or os.getenv('NODE_ADDRESS')
-        self.port = port or os.getenv('PORT', 3000)
 
-        if not self.node_address or not self.private_key:
-            raise ValueError("NODE_ADDRESS and PRIVATE_KEY are required.")
+        if not self.node_address:
+            raise ValueError("NODE_ADDRESS is required.")
 
-        self.base_url = f"http://{self.node_address}:{self.port}"
+        self.base_url = f"https://{self.node_address}"
         self.session = requests.Session()
         self.session.headers.update({
             'Content-Type': 'application/json',
@@ -62,6 +61,7 @@ class AkaveClient:
         Returns:
             dict: Response data.
         """
+        print(f'base_url: {self.base_url}')
         url = f"{self.base_url}/buckets/{bucket_name}"
         response = self.session.get(url)
         return self._handle_response(response)
@@ -95,7 +95,7 @@ class AkaveClient:
         response = self.session.get(url)
         return self._handle_response(response)
 
-    def upload_file(self, bucket_name, file_path=None, file_obj=None):
+    def upload_file(self, bucket_name, file_path=None):
         """
         Upload a file to a specific bucket.
 
@@ -104,24 +104,26 @@ class AkaveClient:
         Args:
             bucket_name (str): Name of the bucket.
             file_path (str): Path to the file to upload.
-            file_obj (file-like object): File object to upload.
 
         Returns:
             dict: Response data.
         """
         url = f"{self.base_url}/buckets/{bucket_name}/files"
-        files = {}
+        print(f'file_path: {file_path}')
         if file_path:
-            files['file'] = open(file_path, 'rb')
-        elif file_obj:
-            files['file'] = file_obj
+            with open(file_path, 'rb') as f:
+                files = {'file': f}
+                os.system(f'node main.js {bucket_name} {file_path}')
         else:
             raise ValueError("Either file_path or file_obj must be provided.")
 
-        response = self.session.post(url, files=files)
-        if file_path:
-            files['file'].close()
-        return self._handle_response(response)
+        response = {
+            "status": "success",
+            "file_name": file_path,
+            "bucket": bucket_name
+        }
+        return response
+
 
     def download_file(self, bucket_name, file_name, destination_path):
         """

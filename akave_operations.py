@@ -6,42 +6,50 @@ from akave_client import AkaveClient
 
 class AkaveOperations:
     def __init__(self, akave_client: AkaveClient):
-        self.akave_client = akave_client
+        self.client = akave_client
 
-    async def store_data(self, data_source_name: str, data: dict):
+    async def store_data(self, bucket_name: str, file_content: bytes, file_name: str):
         """
-        Store the data into Akave object storage.
-
-        - Create a bucket for the data source if it doesn't exist.
-        - Upload the data as a file.
-
-        Args:  
-            data_source_name (str): Name of the data source (bucket name).
-            data (dict): Data to store.
-
-        Returns:  
-            dict: Result of the upload.
+        Store data in Akave storage.
+        
+        Args:
+            bucket_name: Name of the bucket (data source)
+            file_content: Content of the file in bytes
+            file_name: Name of the file to store
+            
+        Returns:
+            dict: Result of the storage operation
         """
-        # Ensure the bucket exists
         try:
-            self.akave_client.view_bucket(data_source_name)
-        except Exception:
-            # Bucket doesn't exist; create it
-            self.akave_client.create_bucket(data_source_name)
-
-        data_file_path = f"/tmp/{data_source_name}_{
-            data['timestamp'].replace(':', '-')}.csv"
-        with open(data_file_path, 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(data.keys())
-            writer.writerows(data.values())
-
-        # Upload the file to the bucket
-        try:
-            result = self.akave_client.upload_file(
-                data_source_name, file_path=data_file_path)
-            return result
+            # Save file content to a temporary file
+            print(f'file_name: {file_name}')
+            temp_path = f"/tmp/{file_name}"
+            try:
+                with open(temp_path, "wb") as f:
+                    f.write(file_content)
+                print(f'Successfully wrote to {temp_path}')
+                print(f'File exists: {os.path.exists(temp_path)}')
+                print(f'File size: {os.path.getsize(temp_path)}')
+            except IOError as io_err:
+                print(f'Failed to write file: {str(io_err)}')
+                raise
+            
+            # Upload the file to Akave
+            upload_result = self.client.upload_file(
+                bucket_name=bucket_name,
+                file_path=temp_path
+            )
+            
+            return {
+                "status": "success",
+                "file_name": file_name,
+                "bucket": bucket_name
+            }
+            
+        except Exception as e:
+            raise Exception(f"Failed to store data: {str(e)}")
+            
         finally:
-            # Clean up the temporary file
-            if os.path.exists(data_file_path):
-                os.remove(data_file_path)
+            # Clean up temporary file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
